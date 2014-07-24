@@ -20,6 +20,7 @@ Manpages
     ndnsec-unlock-tpm   <manpages/ndnsec-unlock-tpm>
     ndnsec-set-acl      <manpages/ndnsec-set-acl>
     manpages/tlvdump
+    manpages/ndn-pib
     :maxdepth: 1
 
 ..
