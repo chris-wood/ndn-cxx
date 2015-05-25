@@ -33,7 +33,8 @@ ndn-cxx Documentation
    + :doc:`tutorials/utils-ndn-regex`
    + :doc:`tutorials/security-validator-config`
    + :doc:`tutorials/signed-interest`
-
+   + :doc:`tutorials/security-trust-schema`
+     
 - :doc:`manpages`
 
 Documentation for ndn-cxx developers and contributors
