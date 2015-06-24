@@ -21,32 +21,69 @@
  * @author Eric Newberry <enewberry@email.arizona.edu>
  */
 
-#ifndef NDN_CXX_LP_TLV_HPP
-#define NDN_CXX_LP_TLV_HPP
+#ifndef NDN_CXX_LP_NACK_HEADER_HPP
+#define NDN_CXX_LP_NACK_HEADER_HPP
+
+#include "../common.hpp"
+#include "../encoding/encoding-buffer.hpp"
+#include "../encoding/block-helpers.hpp"
+
+#include "tlv.hpp"
 
 namespace ndn {
 namespace lp {
-namespace tlv {
 
 /**
- * \brief TLV-TYPE code assignments for NDNLPv2
+ * \brief indicates the reason type of a network NACK
  */
-enum {
-  LpPacket = 100,
-  Fragment = 80,
-  Sequence = 81,
-  FragIndex = 82,
-  FragCount = 83,
-  Nack = 800,
-  NackReason = 801,
-  NextHopFaceId = 816,
-  CachingPolicy = 820,
-  NoCache = 821,
-  IncomingFaceId = 817
+enum class NackReason {
+  NONE = 0,
+  DUPLICATE = 1,
+  GIVE_UP = 2
 };
 
-} // namespace tlv
+/**
+ * \brief represents a Network NACK header
+ */
+class NackHeader
+{
+public:
+  NackHeader();
+
+  explicit
+  NackHeader(const Block& block);
+
+  template<encoding::Tag TAG>
+  size_t
+  wireEncode(EncodingImpl<TAG>& encoder) const;
+
+  const Block&
+  wireEncode() const;
+
+  void
+  wireDecode(const Block& wire);
+
+public: // reason
+  /**
+   * \return reason code
+   * \retval NackReason::NONE if NackReason element does not exist or has an unknown code
+   */
+  NackReason
+  getReason() const;
+
+  /**
+   * \brief set reason code
+   * \param reason a reason code; NackReason::NONE clears the reason
+   */
+  NackHeader&
+  setReason(NackReason reason);
+
+private:
+  NackReason m_reason;
+  mutable Block m_wire;
+};
+
 } // namespace lp
 } // namespace ndn
 
-#endif // NDN_CXX_LP_TLV_HPP
+#endif // NDN_CXX_LP_NACK_HEADER_HPP

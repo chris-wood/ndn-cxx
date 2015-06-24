@@ -21,32 +21,20 @@
  * @author Eric Newberry <enewberry@email.arizona.edu>
  */
 
-#ifndef NDN_CXX_LP_TLV_HPP
-#define NDN_CXX_LP_TLV_HPP
+#include "nack.hpp"
 
 namespace ndn {
 namespace lp {
-namespace tlv {
 
-/**
- * \brief TLV-TYPE code assignments for NDNLPv2
- */
-enum {
-  LpPacket = 100,
-  Fragment = 80,
-  Sequence = 81,
-  FragIndex = 82,
-  FragCount = 83,
-  Nack = 800,
-  NackReason = 801,
-  NextHopFaceId = 816,
-  CachingPolicy = 820,
-  NoCache = 821,
-  IncomingFaceId = 817
-};
+Nack::Nack(const Interest& interest)
+  : m_interest(interest)
+{
+}
 
-} // namespace tlv
+Nack::Nack(Interest&& interest)
+  : m_interest(interest)
+{
+}
+
 } // namespace lp
 } // namespace ndn
-
-#endif // NDN_CXX_LP_TLV_HPP
