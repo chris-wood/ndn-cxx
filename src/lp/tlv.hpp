@@ -40,8 +40,8 @@ enum {
   Nack = 800,
   NackReason = 801,
   NextHopFaceId = 816,
-  CachingPolicy = 820,
-  NoCache = 821,
+  CachePolicy = 820,
+  CachePolicyType = 821,
   IncomingFaceId = 817
 };
 
