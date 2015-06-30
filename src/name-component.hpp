@@ -150,7 +150,7 @@ public:
    */
   template<encoding::Tag TAG>
   size_t
-  wireEncode(EncodingImpl<TAG>& block) const;
+  wireEncode(EncodingImpl<TAG>& encoder) const;
 
   /**
    * @brief Encode to a wire format
@@ -494,7 +494,7 @@ public:
   bool
   empty() const
   {
-    return !hasValue();
+    return !hasValue() || value_size() == 0;
   }
 
   Component
@@ -523,8 +523,9 @@ public:
    * @brief Compare this to the other Component using NDN canonical ordering
    *
    * @param other The other Component to compare with.
-   * @return 0 If they compare equal, -1 if *this comes before other in the canonical ordering, or
-   *         1 if *this comes after other in the canonical ordering.
+   * @retval negative this comes before other in canonical ordering
+   * @retval zero this equals other
+   * @retval positive this comes after other in canonical ordering
    *
    * @see http://named-data.net/doc/ndn-tlv/name.html#canonical-order
    */
@@ -618,7 +619,7 @@ operator<<(std::ostream& os, const Component& component)
 template<class Iterator>
 inline
 Component::Component(Iterator first, Iterator last)
-  : Block(dataBlock(tlv::NameComponent, first, last))
+  : Block(makeBinaryBlock(tlv::NameComponent, first, last))
 {
 }
 

@@ -30,7 +30,8 @@ def build(bld):
                                  excl=['**/*-osx.t.cpp', '**/*-sqlite3.t.cpp']),
         use='ndn-cxx tests-base BOOST',
         includes='.',
-        install_path=None,
+        defines='UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' %(bld.bldnode),
+        install_path=None
         )
 
     unit_tests_pib = bld(

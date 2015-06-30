@@ -3,8 +3,125 @@
 ndn-cxx Release Notes
 ---------------------
 
-ndn-cxx v0.3.0 (changes since version 0.2.0)
-++++++++++++++++++++++++++++++++++++++++++++
+ndn-cxx version 0.3.2 (changes since version 0.3.1)
++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Release date: May 12, 2015
+
+New features:
+^^^^^^^^^^^^^
+
+- Add Link abstraction (:issue:`2587`)
+
+- Add Link and SelectedDelegation fields to the Interest abstraction (:issue:`2587`)
+
+- Initial implementation of several components for the upcoming PIB feature (:issue:`2451`):
+
+  * User-facing PIB implementation and implementation-specific PIB interface
+  * In-memory PIB implementation
+  * Define new abstraction for identity, key, and certificate
+
+Updates and bug fixes:
+^^^^^^^^^^^^^^^^^^^^^^
+
+- Enable decoding Exclude containing ImplicitSha256DigestComponent (:issue:`2629`)
+
+- Update waf build system to version 1.8.9 (:issue:`2209`, :issue:`2657`, :issue:`2792`)
+
+- Avoid duplicating output in IndentedStream (:issue:`2723`)
+
+- Fix skipping empty name component `(...)` during URI decoding (:issue:`2725`)
+
+- Enable ability to exclude empty name component (:issue:`2660`)
+
+- Fix bug with TLV-LENGTH processing in `Block::fromStream` (:issue:`2728`, :issue:`2729`)
+
+- Disable precompiled headers on OS X with clang < 6.1.0 (:issue:`2804`)
+
+Deprecated:
+^^^^^^^^^^^
+
+- `Block::fromBuffer` overloads with output parameter (:issue:`2553`)
+
+Removed:
+^^^^^^^^
+
+- Delete deprecated Controller functions:
+
+  * `Controller::start` overloads, except the overload taking CommandOptions
+  * `Controller::Sign` typedef
+  * `Controller::getDefaultCommandTimeout`
+  * `ControlCommand::getPrefix`
+  * `ControlCommand::getRequestName(ControlParameters)`
+  * `Controller::Controller(Face&)`
+
+****************************************************************************
+
+
+ndn-cxx version 0.3.1 (changes since version 0.3.0)
++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Release date: March 3, 2015
+
+New features:
+^^^^^^^^^^^^^
+
+- **Management**
+
+  - Add isConnected() in :ndn-cxx:`signal::Connection` and :ndn-cxx:`signal::ScopedConnection`
+    (:issue:`2308`)
+
+  - Extend :ndn-cxx:`DummyClientFace` to process :ndn-cxx:`LocalControlHeader` (:issue:`2510`)
+
+  - Add CachingPolicy to :ndn-cxx:`LocalControlHeader` (:issue:`2183`)
+
+Updates and bug fixes:
+^^^^^^^^^^^^^^^^^^^^^^
+
+- **Wire encoding**
+
+  - Refactoring of :ndn-cxx:`EncodingImpl` class template (``EncodingBuffer`` and
+    ``EncodingEstimator``) (:issue:`2494`, :issue:`2490`)
+
+  - Change :ndn-cxx:`Block::fromBuffer` return type (:issue:`2553`)
+
+- **Miscellaneous tools**
+
+  - Mark ``Digest<Hash>::operator==`` as unsuitable in a security sensitive context
+    (:issue:`2395`)
+
+  - Restrict destruction of Signal from handler (:issue:`2313`)
+
+- **Documentation**
+
+  - Correct function names in security library tutorial (:issue:`2474`)
+
+  - Remind users to reinstall ports after OSX upgrade (:issue:`2284`)
+
+- **Tests**
+
+  - Fix global buffer overflow in ``ImplicitSha256Digest`` test case (:issue:`2307`)
+
+  - Change naming conventions for unit test files and test suite names (:issue:`2497`)
+
+- **Build**
+
+  - Explicitly define ``_GLIBCXX_USE_NANOSLEEP``, necessary for gcc < 4.8 in some environments
+    (:issue:`2499`)
+
+Removed:
+^^^^^^^^
+
+- Delete deprecated ``Block(std::istream&)`` constructor (:issue:`2241`)
+
+- Delete deprecated ``ndn::ptr_lib``, ``ndn::func_lib`` (:issue:`2110`)
+
+- Delete deprecated ``MetaInfo::TYPE_*`` (:issue:`2170`)
+
+****************************************************************************
+
+ndn-cxx version 0.3.0 (changes since version 0.2.0)
++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Release date: February 2, 2015
 
@@ -243,8 +360,10 @@ Removed:
 
 - unused ``openssl`` dependency
 
-ndn-cxx v0.2.0 (changes since version 0.1.0)
-++++++++++++++++++++++++++++++++++++++++++++
+****************************************************************************
+
+ndn-cxx version 0.2.0 (changes since version 0.1.0)
++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Release date: August 25, 2014
 
@@ -418,10 +537,10 @@ Removed:
   In applications, periodic events should be just re-scheduled within the callback for
   single-shot events.
 
+****************************************************************************
 
-
-ndn-cxx v0.1.0
-++++++++++++++
+ndn-cxx version 0.1.0
++++++++++++++++++++++
 
 Release date: May 7, 2014
 

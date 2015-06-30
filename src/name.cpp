@@ -27,7 +27,6 @@
 
 #include "util/time.hpp"
 #include "util/string-helper.hpp"
-#include "util/concepts.hpp"
 #include "encoding/block.hpp"
 #include "encoding/encoding-buffer.hpp"
 
@@ -37,11 +36,33 @@ namespace ndn {
 
 BOOST_CONCEPT_ASSERT((boost::EqualityComparable<Name>));
 BOOST_CONCEPT_ASSERT((WireEncodable<Name>));
+BOOST_CONCEPT_ASSERT((WireEncodableWithEncodingBuffer<Name>));
 BOOST_CONCEPT_ASSERT((WireDecodable<Name>));
 static_assert(std::is_base_of<tlv::Error, Name::Error>::value,
               "Name::Error must inherit from tlv::Error");
 
 const size_t Name::npos = std::numeric_limits<size_t>::max();
+
+Name::Name()
+  : m_nameBlock(tlv::Name)
+{
+}
+
+Name::Name(const Block& wire)
+{
+  m_nameBlock = wire;
+  m_nameBlock.parse();
+}
+
+Name::Name(const char* uri)
+{
+  construct(uri);
+}
+
+Name::Name(const std::string& uri)
+{
+  construct(uri.c_str());
+}
 
 template<encoding::Tag TAG>
 size_t
@@ -60,7 +81,7 @@ Name::wireEncode(EncodingImpl<TAG>& encoder) const
 }
 
 template size_t
-Name::wireEncode<encoding::EncoderTag>(EncodingImpl<encoding::EncoderTag>& estimator) const;
+Name::wireEncode<encoding::EncoderTag>(EncodingImpl<encoding::EncoderTag>& encoder) const;
 
 template size_t
 Name::wireEncode<encoding::EstimatorTag>(EncodingImpl<encoding::EstimatorTag>& encoder) const;
@@ -94,7 +115,7 @@ Name::wireDecode(const Block& wire)
 }
 
 void
-Name::set(const char* uriOrig)
+Name::construct(const char* uriOrig)
 {
   clear();
 
@@ -141,13 +162,21 @@ Name::set(const char* uriOrig)
     if (iComponentEnd == std::string::npos)
       iComponentEnd = uri.size();
 
-    Component component = Component::fromEscapedString(&uri[0], iComponentStart, iComponentEnd);
-    // Ignore illegal components.  This also gets rid of a trailing '/'.
-    if (!component.empty())
-      append(Component(component));
-
+    append(Component::fromEscapedString(&uri[0], iComponentStart, iComponentEnd));
     iComponentStart = iComponentEnd + 1;
   }
+}
+
+void
+Name::set(const char* uri)
+{
+  *this = std::move(Name(uri));
+}
+
+void
+Name::set(const std::string& uri)
+{
+  *this = std::move(Name(uri));
 }
 
 std::string
@@ -159,11 +188,11 @@ Name::toUri() const
 }
 
 Name&
-Name::append(const Name& name)
+Name::append(const PartialName& name)
 {
   if (&name == this)
     // Copying from this name, so need to make a copy first.
-    return append(Name(name));
+    return append(PartialName(name));
 
   for (size_t i = 0; i < name.size(); ++i)
     append(name.at(i));
@@ -241,16 +270,20 @@ Name::appendImplicitSha256Digest(const uint8_t* digest, size_t digestSize)
   return *this;
 }
 
-Name
-Name::getSubName(size_t iStartComponent, size_t nComponents) const
+PartialName
+Name::getSubName(ssize_t iStartComponent, size_t nComponents) const
 {
-  Name result;
+  PartialName result;
 
+  ssize_t iStart = iStartComponent < 0 ? this->size() + iStartComponent : iStartComponent;
   size_t iEnd = this->size();
-  if (nComponents != npos)
-    iEnd = std::min(this->size(), iStartComponent + nComponents);
 
-  for (size_t i = iStartComponent; i < iEnd; ++i)
+  iStart = std::max(iStart, static_cast<ssize_t>(0));
+
+  if (nComponents != npos)
+    iEnd = std::min(this->size(), iStart + nComponents);
+
+  for (size_t i = iStart; i < iEnd; ++i)
     result.append(at(i));
 
   return result;
@@ -313,7 +346,7 @@ Name::compare(size_t pos1, size_t count1, const Name& other, size_t pos2, size_t
     }
   }
   // [pos1, pos1+count) of this Name equals [pos2, pos2+count) of other Name
-  return (count1 > count2) - (count1 < count2); // signum(count1 - count2)
+  return count1 - count2;
 }
 
 std::ostream&
@@ -338,7 +371,7 @@ operator>>(std::istream& is, Name& name)
 {
   std::string inputString;
   is >> inputString;
-  name.set(inputString);
+  name = std::move(Name(inputString));
 
   return is;
 }

@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(ManualDisconnectDestructed)
   BOOST_CHECK_EQUAL(hit, 1); // handler called
 
   BOOST_CHECK_EQUAL(connection.isConnected(), true);
-  so.reset(); // destruct EventEmitter
+  so.reset(); // destruct Signal
   BOOST_CHECK_EQUAL(connection.isConnected(), false);
   BOOST_CHECK_NO_THROW(connection.disconnect());
 }
@@ -381,14 +381,14 @@ BOOST_AUTO_TEST_CASE(DisconnectSelfInHandler)
   int hit = 0;
   Connection connection;
   BOOST_CHECK_EQUAL(connection.isConnected(), false);
-  connection = so.sig.connect(bind([&] (SignalOwner0& so) {
+  connection = so.sig.connect(bind([] (int& hit, SignalOwner0& so, Connection& connection) {
     ++hit;
     BOOST_CHECK_EQUAL(connection.isConnected(), true);
     connection.disconnect();
     BOOST_CHECK_EQUAL(connection.isConnected(), false);
     BOOST_CHECK_EQUAL(so.isSigEmpty(), false); // disconnecting hasn't taken effect
-  }, ref(so)));
-  // Bug 2302: 'so' needs to be bound to the handler;
+  }, ref(hit), ref(so), ref(connection)));
+  // Bug 2302, 2523: variables needs to be bound to the handler;
   // lambda capture won't work because closure would be destructed at .disconnect
 
   so.emitSignal(sig);
@@ -420,21 +420,6 @@ BOOST_AUTO_TEST_CASE(ThrowInHandler)
 
   BOOST_CHECK_THROW(so.emitSignal(sig), HandlerError);
   BOOST_CHECK_EQUAL(hit, 2); // handler called
-}
-
-BOOST_AUTO_TEST_CASE(DestructInHandler)
-{
-  unique_ptr<SignalOwner0> so(new SignalOwner0());
-
-  int hit = 0;
-  so->sig.connect([&] {
-    ++hit;
-    so.reset();
-  });
-
-  BOOST_CHECK_NO_THROW(so->emitSignal(sig));
-  BOOST_CHECK_EQUAL(hit, 1); // handler called
-  BOOST_CHECK(so == nullptr);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -222,8 +222,10 @@ BOOST_AUTO_TEST_CASE(FromBuffer)
 
   // using BufferPtr (avoids memory copy)
   size_t offset = 0;
+  bool isOk = false;
   Block testBlock;
-  BOOST_CHECK(Block::fromBuffer(buffer, offset, testBlock));
+  std::tie(isOk, testBlock) = Block::fromBuffer(buffer, offset);
+  BOOST_CHECK(isOk);
   BOOST_CHECK_EQUAL(testBlock.type(), 0);
   BOOST_CHECK_EQUAL(testBlock.size(), 3);
   BOOST_CHECK_EQUAL(testBlock.value_size(), 1);
@@ -231,7 +233,8 @@ BOOST_AUTO_TEST_CASE(FromBuffer)
   BOOST_CHECK_EQUAL(*testBlock.value(), 0xfa);
   offset += testBlock.size();
 
-  BOOST_CHECK(Block::fromBuffer(buffer, offset, testBlock));
+  std::tie(isOk, testBlock) = Block::fromBuffer(buffer, offset);
+  BOOST_CHECK(isOk);
   BOOST_CHECK_EQUAL(testBlock.type(), 1);
   BOOST_CHECK_EQUAL(testBlock.size(), 3);
   BOOST_CHECK_EQUAL(testBlock.value_size(), 1);
@@ -239,11 +242,14 @@ BOOST_AUTO_TEST_CASE(FromBuffer)
   BOOST_CHECK_EQUAL(*testBlock.value(), 0xfb);
   offset += testBlock.size();
 
-  BOOST_CHECK(!Block::fromBuffer(buffer, offset, testBlock));
+  std::tie(isOk, testBlock) = Block::fromBuffer(buffer, offset);
+  BOOST_CHECK(!isOk);
 
   // just buffer, copies memory
   offset = 0;
-  BOOST_CHECK(Block::fromBuffer(TEST_BUFFER + offset, sizeof(TEST_BUFFER) - offset, testBlock));
+  std::tie(isOk, testBlock) = Block::fromBuffer(TEST_BUFFER + offset,
+                                                sizeof(TEST_BUFFER) - offset);
+  BOOST_CHECK(isOk);
   BOOST_CHECK_EQUAL(testBlock.type(), 0);
   BOOST_CHECK_EQUAL(testBlock.size(), 3);
   BOOST_CHECK_EQUAL(testBlock.value_size(), 1);
@@ -251,7 +257,9 @@ BOOST_AUTO_TEST_CASE(FromBuffer)
   BOOST_CHECK_EQUAL(*testBlock.value(), 0xfa);
   offset += testBlock.size();
 
-  BOOST_CHECK(Block::fromBuffer(TEST_BUFFER + offset, sizeof(TEST_BUFFER) - offset, testBlock));
+  std::tie(isOk, testBlock) = Block::fromBuffer(TEST_BUFFER + offset,
+                                                sizeof(TEST_BUFFER) - offset);
+  BOOST_CHECK(isOk);
   BOOST_CHECK_EQUAL(testBlock.type(), 1);
   BOOST_CHECK_EQUAL(testBlock.size(), 3);
   BOOST_CHECK_EQUAL(testBlock.value_size(), 1);
@@ -259,10 +267,12 @@ BOOST_AUTO_TEST_CASE(FromBuffer)
   BOOST_CHECK_EQUAL(*testBlock.value(), 0xfb);
   offset += testBlock.size();
 
-  BOOST_CHECK(!Block::fromBuffer(TEST_BUFFER + offset, sizeof(TEST_BUFFER) - offset, testBlock));
+  std::tie(isOk, testBlock) = Block::fromBuffer(TEST_BUFFER + offset,
+                                                sizeof(TEST_BUFFER) - offset);
+  BOOST_CHECK(!isOk);
 }
 
-BOOST_AUTO_TEST_CASE(BlockFromStream)
+BOOST_AUTO_TEST_CASE(FromStream)
 {
   const uint8_t TEST_BUFFER[] = {0x00, 0x01, 0xfa, // ok
                                  0x01, 0x01, 0xfb, // ok
@@ -288,6 +298,45 @@ BOOST_AUTO_TEST_CASE(BlockFromStream)
   BOOST_CHECK_EQUAL(*testBlock.value(), 0xfb);
 
   BOOST_CHECK_THROW(Block::fromStream(stream), tlv::Error);
+}
+
+BOOST_AUTO_TEST_CASE(FromStreamWhitespace) // Bug 2728
+{
+  uint8_t PACKET[] = {
+    0x06, 0x20, // Data
+          0x07, 0x11, // Name
+                0x08, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, // NameComponent 'hello'
+                0x08, 0x01, 0x31, // NameComponent '1'
+                0x08, 0x05, 0x77, 0x6f, 0x72, 0x6c, 0x64, // NameComponent 'world'
+          0x14, 0x00, // MetaInfo empty
+          0x15, 0x00, // Content empty
+          0x16, 0x05, // SignatureInfo
+                 0x1b, 0x01, 0x01, // SignatureType RSA
+                 0x1c, 0x00, // KeyLocator empty
+          0x17, 0x00 // SignatureValue empty
+  };
+  // TLV-LENGTH of <Data> is 0x20 which happens to be ASCII whitespace
+
+  std::stringstream stream;
+  stream.write(reinterpret_cast<const char*>(PACKET), sizeof(PACKET));
+  stream.seekg(0);
+
+  Block block = Block::fromStream(stream);
+  BOOST_CHECK_NO_THROW(block.parse());
+}
+
+BOOST_AUTO_TEST_CASE(FromStreamZeroLength) // Bug 2729
+{
+  uint8_t BUFFER[] = { 0x07, 0x00 }; // TLV-LENGTH is zero
+
+  std::stringstream stream;
+  stream.write(reinterpret_cast<const char*>(BUFFER), sizeof(BUFFER));
+  stream.seekg(0);
+
+  Block block;
+  BOOST_CHECK_NO_THROW(block = Block::fromStream(stream));
+  BOOST_CHECK_EQUAL(block.type(), 0x07);
+  BOOST_CHECK_EQUAL(block.value_size(), 0);
 }
 
 BOOST_AUTO_TEST_CASE(Equality)

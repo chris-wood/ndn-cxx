@@ -67,6 +67,11 @@ def options(opt):
 
 def configure(conf):
 	if (conf.options.with_pch and conf.env['COMPILER_CXX'] in PCH_COMPILER_OPTIONS.keys()):
+		if Utils.unversioned_sys_platform() == "darwin" and conf.env['CXX_NAME'] == 'clang':
+			version = tuple(int(i) for i in conf.env['CC_VERSION'])
+			if version < (6, 1, 0):
+				# Issue #2804
+				return
 		conf.env.WITH_PCH = True
 		flags = PCH_COMPILER_OPTIONS[conf.env['COMPILER_CXX']]
 		conf.env.CXXPCH_F = flags[0]
@@ -90,8 +95,8 @@ def apply_pch(self):
 
 	if getattr(self, 'name', None):
 		try:
-			task = self.bld.pch_tasks[self.name]
-			self.bld.fatal("Duplicated 'pch' task with name %r" % self.name)
+			task = self.bld.pch_tasks["%s.%s" % (self.name, self.idx)]
+			self.bld.fatal("Duplicated 'pch' task with name %r" % "%s.%s" % (self.name, self.idx))
 		except KeyError:
 			pass
 
@@ -104,7 +109,7 @@ def apply_pch(self):
 
 	self.pch_task = task
 	if getattr(self, 'name', None):
-		self.bld.pch_tasks[self.name] = task
+		self.bld.pch_tasks["%s.%s" % (self.name, self.idx)] = task
 
 @TaskGen.feature('cxx')
 @TaskGen.after_method('process_source', 'propagate_uselib_vars')

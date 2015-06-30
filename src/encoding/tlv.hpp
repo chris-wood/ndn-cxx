@@ -65,7 +65,7 @@ enum {
   NameComponent = 8,
   Selectors     = 9,
   Nonce         = 10,
-  Scope         = 11, // deprecated
+  // <Unassigned> = 11,
   InterestLifetime          = 12,
   MinSuffixComponents       = 13,
   MaxSuffixComponents       = 14,
@@ -84,6 +84,9 @@ enum {
   SignatureType = 27,
   KeyLocator    = 28,
   KeyDigest     = 29,
+  LinkPreference = 30,
+  LinkDelegation = 31,
+  SelectedDelegation = 32,
 
   AppPrivateBlock1 = 128,
   AppPrivateBlock2 = 32767
@@ -92,6 +95,7 @@ enum {
 enum SignatureTypeValue {
   DigestSha256 = 0,
   SignatureSha256WithRsa = 1,
+  // <Unassigned> = 2,
   SignatureSha256WithEcdsa = 3
 };
 

@@ -199,11 +199,15 @@ Block::Block(uint32_t type, const Block& value)
 Block
 Block::fromStream(std::istream& is)
 {
-  std::istream_iterator<uint8_t> tmp_begin(is);
-  std::istream_iterator<uint8_t> tmp_end;
+  std::istream_iterator<uint8_t> begin(is >> std::noskipws);
+  std::istream_iterator<uint8_t> end;
 
-  uint32_t type = tlv::readType(tmp_begin, tmp_end);
-  uint64_t length = tlv::readVarNumber(tmp_begin, tmp_end);
+  uint32_t type = tlv::readType(begin, end);
+  uint64_t length = tlv::readVarNumber(begin, end);
+
+  if (length == 0) {
+    return makeEmptyBlock(type);
+  }
 
   if (length > MAX_SIZE_OF_BLOCK_FROM_STREAM)
     throw tlv::Error("Length of block from stream is too large");
@@ -212,45 +216,41 @@ Block::fromStream(std::istream& is)
   // we may completely lose all the bytes extracted from the stream.
 
   char buf[MAX_SIZE_OF_BLOCK_FROM_STREAM];
-  buf[0] = *tmp_begin;
-  is.read(buf+1, length-1);
+  buf[0] = *begin;
+  is.read(buf + 1, length - 1);
 
   if (length != static_cast<uint64_t>(is.gcount()) + 1) {
     throw tlv::Error("Not enough data in the buffer to fully parse TLV");
   }
 
-  return dataBlock(type, buf, length);
+  return makeBinaryBlock(type, buf, length);
 }
 
-bool
-Block::fromBuffer(const ConstBufferPtr& wire, size_t offset, Block& block)
+std::tuple<bool, Block>
+Block::fromBuffer(ConstBufferPtr buffer, size_t offset)
 {
-  Buffer::const_iterator tempBegin = wire->begin() + offset;
+  Buffer::const_iterator tempBegin = buffer->begin() + offset;
 
   uint32_t type;
-  bool isOk = tlv::readType(tempBegin, wire->end(), type);
+  bool isOk = tlv::readType(tempBegin, buffer->end(), type);
   if (!isOk)
-    return false;
+    return std::make_tuple(false, Block());
 
   uint64_t length;
-  isOk = tlv::readVarNumber(tempBegin, wire->end(), length);
+  isOk = tlv::readVarNumber(tempBegin, buffer->end(), length);
   if (!isOk)
-    return false;
+    return std::make_tuple(false, Block());
 
-  if (length > static_cast<uint64_t>(wire->end() - tempBegin))
-    {
-      return false;
-    }
+  if (length > static_cast<uint64_t>(buffer->end() - tempBegin))
+    return std::make_tuple(false, Block());
 
-  block = Block(wire, type,
-                wire->begin() + offset, tempBegin + length,
-                tempBegin, tempBegin + length);
-
-  return true;
+  return std::make_tuple(true, Block(buffer, type,
+                                     buffer->begin() + offset, tempBegin + length,
+                                     tempBegin, tempBegin + length));
 }
 
-bool
-Block::fromBuffer(const uint8_t* buffer, size_t maxSize, Block& block)
+std::tuple<bool, Block>
+Block::fromBuffer(const uint8_t* buffer, size_t maxSize)
 {
   const uint8_t* tempBegin = buffer;
   const uint8_t* tempEnd = buffer + maxSize;
@@ -258,24 +258,21 @@ Block::fromBuffer(const uint8_t* buffer, size_t maxSize, Block& block)
   uint32_t type = 0;
   bool isOk = tlv::readType(tempBegin, tempEnd, type);
   if (!isOk)
-    return false;
+    return std::make_tuple(false, Block());
 
   uint64_t length;
   isOk = tlv::readVarNumber(tempBegin, tempEnd, length);
   if (!isOk)
-    return false;
+    return std::make_tuple(false, Block());
 
   if (length > static_cast<uint64_t>(tempEnd - tempBegin))
-    {
-      return false;
-    }
+    return std::make_tuple(false, Block());
 
   BufferPtr sharedBuffer = make_shared<Buffer>(buffer, tempBegin + length);
-  block = Block(sharedBuffer, type,
-                sharedBuffer->begin(), sharedBuffer->end(),
-                sharedBuffer->begin() + (tempBegin - buffer), sharedBuffer->end());
-
-  return true;
+  return std::make_tuple(true,
+         Block(sharedBuffer, type,
+               sharedBuffer->begin(), sharedBuffer->end(),
+               sharedBuffer->begin() + (tempBegin - buffer), sharedBuffer->end()));
 }
 
 void

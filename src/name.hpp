@@ -33,13 +33,22 @@
 
 namespace ndn {
 
+class Name;
+
 /**
- * A Name holds an array of Name::Component and represents an NDN name.
+ * @brief Partial name abstraction to represent an arbitrary sequence of name components
+ */
+typedef Name PartialName;
+
+/**
+ * @brief Name abstraction to represent an absolute name
  */
 class Name : public enable_shared_from_this<Name>
 {
 public:
-  /// @brief Error that can be thrown from Name
+  /**
+   * @brief Error that can be thrown from Name
+   */
   class Error : public name::Component::Error
   {
   public:
@@ -70,12 +79,9 @@ public:
   typedef component_container::size_type       size_type;
 
   /**
-   * Create a new Name with no components.
+   * @brief Create a new Name with no components.
    */
-  Name()
-    : m_nameBlock(tlv::Name)
-  {
-  }
+  Name();
 
   /**
    * @brief Create Name object from wire block
@@ -87,36 +93,26 @@ public:
    * @endcode
    */
   explicit
-  Name(const Block& wire)
-  {
-    m_nameBlock = wire;
-    m_nameBlock.parse();
-  }
+  Name(const Block& wire);
 
   /**
-   * Parse the uri according to the NDN URI Scheme and create the name with the components.
-   * @param uri The URI string.
+   * @brief Create name from @p uri (NDN URI scheme)
+   * @param uri The null-terminated URI string
    */
-  Name(const char* uri)
-  {
-    set(uri);
-  }
+  Name(const char* uri);
 
   /**
-   * Parse the uri according to the NDN URI Scheme and create the name with the components.
-   * @param uri The URI string.
+   * @brief Create name from @p uri (NDN URI scheme)
+   * @param uri The URI string
    */
-  Name(const std::string& uri)
-  {
-    set(uri.c_str());
-  }
+  Name(const std::string& uri);
 
   /**
    * @brief Fast encoding or block size estimation
    */
   template<encoding::Tag TAG>
   size_t
-  wireEncode(EncodingImpl<TAG>& block) const;
+  wireEncode(EncodingImpl<TAG>& encoder) const;
 
   const Block&
   wireEncode() const;
@@ -131,24 +127,21 @@ public:
   hasWire() const;
 
   /**
-   * Parse the uri according to the NDN URI Scheme and set the name with the components.
-   * @param uri The null-terminated URI string.
+   * @deprecated Use appropriate constructor
    */
+  DEPRECATED(
   void
-  set(const char* uri);
+  set(const char* uri));
 
   /**
-   * Parse the uri according to the NDN URI Scheme and set the name with the components.
-   * @param uri The URI string.
+   * @deprecated Use appropriate constructor
    */
+  DEPRECATED(
   void
-  set(const std::string& uri)
-  {
-    set(uri.c_str());
-  }
+  set(const std::string& uri));
 
   /**
-   * Append a new component, copying from value of length valueLength.
+   * @brief Append a new component, copying from value of length valueLength.
    * @return This name so that you can chain calls to append.
    */
   Name&
@@ -175,6 +168,9 @@ public:
     return *this;
   }
 
+  /**
+   * @brief Append component @p value
+   */
   Name&
   append(const Component& value)
   {
@@ -208,12 +204,12 @@ public:
   }
 
   /**
-   * Append the components of the given name to this name.
-   * @param name The Name with components to append.
-   * @return This name so that you can chain calls to append.
+   * @brief append a PartialName to this Name.
+   * @param name the components to append
+   * @return this name
    */
   Name&
-  append(const Name& name);
+  append(const PartialName& name);
 
   /**
    * Clear all the components.
@@ -225,24 +221,31 @@ public:
   }
 
   /**
-   * Get a new name, constructed as a subset of components.
-   * @param iStartComponent The index if the first component to get.
+   * @brief Extract a sub-name (PartialName) of @p nComponents components starting
+   *        from @p iStartComponent
+   * @param iStartComponent index of the first component;
+   *        if iStartComponent is negative, size()+iStartComponent is used instead
    * @param nComponents The number of components starting at iStartComponent.
-   *                    Use npos to get the sub Name until the end of this Name.
-   * @return A new name.
+   *                    Use npos to get the Partial Name until the end of this Name.
+   * @detail If iStartComponent is out of bounds and is negative, will return the components
+   *         starting in the beginning of the Name
+   *         If iStartComponent is out of bounds and is positive, will return the component "/"
+   *         If nComponents is out of bounds, will return the components until the end of
+   *         this Name
+   * @return A new partial name
    */
-  Name
-  getSubName(size_t iStartComponent, size_t nComponents = npos) const;
+  PartialName
+  getSubName(ssize_t iStartComponent, size_t nComponents = npos) const;
 
   /**
-   * @brief Return a new Name with the first nComponents components of this Name.
+   * @brief Extract a prefix (PartialName) of the name, containing first @p nComponents components
    *
    * @param nComponents The number of prefix components.  If nComponents is -N then return
    *                    the prefix up to name.size() - N. For example getPrefix(-1)
    *                    returns the name without the final component.
-   * @return A new Name.
+   * @return A new partial name
    */
-  Name
+  PartialName
   getPrefix(ssize_t nComponents) const
   {
     if (nComponents < 0)
@@ -448,19 +451,22 @@ public:
   /**
    * @brief Compare this to the other Name using NDN canonical ordering.
    *
-   * If the first components of each name are not equal, this returns -1 if the first comes
-   * before the second using the NDN canonical ordering for name components, or 1 if it
-   * comes after.  If they are equal, this compares the second components of each name, etc.
-   * If both names are the same up to the size of the shorter name, this returns -1 if the
-   * first name is shorter than the second or 1 if it is longer.  For example, if you
-   * std::sort gives: /a/b/d /a/b/cc /c /c/a /bb .  This is intuitive because all names with
-   * the prefix /a are next to each other.  But it may be also be counter-intuitive because
-   * /c comes before /bb according to NDN canonical ordering since it is shorter.  @param
-   * other The other Name to compare with.
+   * If the first components of each name are not equal, this returns a negative value if
+   * the first comes before the second using the NDN canonical ordering for name
+   * components, or a positive value if it comes after.  If they are equal, this compares
+   * the second components of each name, etc. If both names are the same up to the size
+   * of the shorter name, this returns a negative value if the first name is shorter than
+   * the second or a positive value if it is longer.  For example, if you std::sort gives:
+   * /a/b/d /a/b/cc /c /c/a /bb .
+   * This is intuitive because all names with the prefix /a are next to each other.
+   * But it may be also be counter-intuitive because /c comes before /bb according
+   * to NDN canonical ordering since it is shorter.
    *
-   * @retval 0 if they compare equal
-   * @retval -1 if *this comes before other in the canonical ordering
-   * @retval 1 if *this comes after other in the canonical ordering
+   * @param other The other Name to compare with.
+   *
+   * @retval negative this comes before other in canonical ordering
+   * @retval zero this equals other
+   * @retval positive this comes after other in canonical ordering
    *
    * @see http://named-data.net/doc/ndn-tlv/name.html#canonical-order
    */
@@ -600,6 +606,10 @@ public:
   {
     return const_reverse_iterator(begin());
   }
+
+private:
+  void
+  construct(const char* uri);
 
 public:
   /** \brief indicates "until the end" in getSubName and compare

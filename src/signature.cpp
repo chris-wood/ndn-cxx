@@ -46,4 +46,13 @@ Signature::setInfo(const Block& info)
   m_info = SignatureInfo(info);
 }
 
+void
+Signature::setValue(const Block& value)
+{
+  if (value.type() != tlv::SignatureValue) {
+    throw Error("The supplied block is not SignatureValue");
+  }
+  m_value = value;
+}
+
 } // namespace ndn

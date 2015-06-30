@@ -29,6 +29,7 @@
 #include "util/time.hpp"
 #include "management/nfd-local-control-header.hpp"
 #include "tag-host.hpp"
+#include "link.hpp"
 
 namespace ndn {
 
@@ -76,16 +77,6 @@ public:
    */
   Interest(const Name& name, const time::milliseconds& interestLifetime);
 
-  /** @brief Create a new Interest for the given name, selectors, and guiders
-   *  @warning In certain contexts that use Interest::shared_from_this(), Interest must be created
-   *           using `make_shared`. Otherwise, .shared_from_this() will throw an exception.
-   */
-  Interest(const Name& name,
-           const Selectors& selectors,
-           int scope,
-           const time::milliseconds& interestLifetime,
-           uint32_t nonce = 0);
-
   /** @brief Create from wire encoding
    *  @warning In certain contexts that use Interest::shared_from_this(), Interest must be created
    *           using `make_shared`. Otherwise, .shared_from_this() will throw an exception.
@@ -98,7 +89,7 @@ public:
    */
   template<encoding::Tag TAG>
   size_t
-  wireEncode(EncodingImpl<TAG>& block) const;
+  wireEncode(EncodingImpl<TAG>& encoder) const;
 
   /**
    * @brief Encode to a wire format
@@ -129,6 +120,76 @@ public:
    */
   std::string
   toUri() const;
+
+public: // Link and forwarding hint
+
+   /**
+   * @brief Check whether the Interest contains a Link object
+   * @return True if there is a link object, otherwise false
+   */
+  bool
+  hasLink() const;
+
+  /**
+   * @brief Get the link object for this interest
+   * @return The link object if there is one contained in this interest
+   * @throws Interest::Error if there is no link object contained in the interest
+   */
+  Link
+  getLink() const;
+
+  /**
+   * @brief Set the link object for this interest
+   * @param link The link object that will be included in this interest (in wire format)
+   * @post !hasSelectedDelegation()
+   */
+  void
+  setLink(const Block& link);
+
+  /**
+   *@brief Reset the wire format of the given interest and the contained link
+   */
+  void
+  unsetLink();
+
+  /**
+   * @brief Check whether the Interest includes a selected delegation
+   * @return True if there is a selected delegation, otherwise false
+   */
+  bool
+  hasSelectedDelegation() const;
+
+  /**
+   * @brief Get the name of the selected delegation
+   * @return The name of the selected delegation
+   * @throw Error SelectedDelegation is not set.
+   */
+  Name
+  getSelectedDelegation() const;
+
+  /**
+   * @brief Set the selected delegation
+   * @param delegationName The name of the selected delegation
+   * @throw Error Link is not set.
+   * @throw std::invalid_argument @p delegationName does not exist in Link.
+   */
+  void
+  setSelectedDelegation(const Name& delegationName);
+
+  /**
+   * @brief Set the selected delegation
+   * @param delegation The index of the selected delegation
+   * @throw Error Link is not set.
+   * @throw std::out_of_range @p delegationIndex is out of bound in Link.
+   */
+  void
+  setSelectedDelegation(size_t delegationIndex);
+
+   /**
+   * @brief Unset the selected delegation
+   */
+  void
+  unsetSelectedDelegation();
 
 public: // matching
   /** @brief Check if Interest, including selectors, matches the given @p name
@@ -161,20 +222,6 @@ public: // Name and guiders
   setName(const Name& name)
   {
     m_name = name;
-    m_wire.reset();
-    return *this;
-  }
-
-  int
-  getScope() const
-  {
-    return m_scope;
-  }
-
-  Interest&
-  setScope(int scope)
-  {
-    m_scope = scope;
     m_wire.reset();
     return *this;
   }
@@ -392,9 +439,10 @@ private:
   Name m_name;
   Selectors m_selectors;
   mutable Block m_nonce;
-  int m_scope;
   time::milliseconds m_interestLifetime;
 
+  mutable Block m_link;
+  size_t m_selectedDelegationIndex;
   mutable Block m_wire;
 
   nfd::LocalControlHeader m_localControlHeader;
