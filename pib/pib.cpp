@@ -22,10 +22,7 @@
 #include "pib.hpp"
 
 #include "security/pib/pib-encoding.hpp"
-#ifdef NDN_CXX_HAVE_OSX_SECURITY
-#include "security/sec-tpm-osx.hpp"
-#endif // NDN_CXX_HAVE_OSX_SECURITY
-#include "security/sec-tpm-file.hpp"
+#include "security/key-chain.hpp"
 #include "util/io.hpp"
 #include "util/crypto.hpp"
 #include "util/concepts.hpp"
@@ -42,19 +39,6 @@ using std::set;
 const Name Pib::PIB_PREFIX("/localhost/pib");
 const Name Pib::EMPTY_SIGNER_NAME;
 const name::Component Pib::MGMT_LABEL("mgmt");
-
-static inline std::tuple<std::string/*type*/, std::string/*location*/>
-parseTpmLocator(const std::string& tpmLocator)
-{
-  size_t pos = tpmLocator.find(':');
-  if (pos != std::string::npos) {
-    return std::make_tuple(tpmLocator.substr(0, pos),
-                           tpmLocator.substr(pos + 1));
-  }
-  else {
-    return std::make_tuple(tpmLocator, "");
-  }
-}
 
 // \todo make this a static method in KeyChain
 static inline void
@@ -121,19 +105,7 @@ Pib::setMgmtCert(std::shared_ptr<IdentityCertificate> mgmtCert)
 void
 Pib::initializeTpm(const string& tpmLocator)
 {
-  string tpmScheme, tpmLocation;
-  std::tie(tpmScheme, tpmLocation) = parseTpmLocator(tpmLocator);
-
-  if (tpmScheme == "tpm-file" || tpmScheme == "file") {
-    m_tpm = unique_ptr<SecTpm>(new SecTpmFile(tpmLocation));
-  }
-#ifdef NDN_CXX_HAVE_OSX_SECURITY
-  else if (tpmScheme == "tpm-osxkeychain" || tpmScheme == "osx-keychain") {
-    m_tpm = unique_ptr<SecTpm>(new SecTpmOsx(tpmLocation));
-  }
-#endif
-  else
-    throw Error("Cannot initialize TPM: tpm is not supported");
+  m_tpm = KeyChain::createTpm(tpmLocator);
 }
 
 void
