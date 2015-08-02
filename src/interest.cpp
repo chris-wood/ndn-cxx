@@ -46,6 +46,14 @@ Interest::Interest(const Name& name)
 {
 }
 
+Interest::Interest(const Name& name, std::vector<uint8_t> payload)
+  : m_name(name)
+  , m_payload(payload)
+  , m_interestLifetime(time::milliseconds::min())
+  , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
+{
+}
+
 Interest::Interest(const Name& name, const time::milliseconds& interestLifetime)
   : m_name(name)
   , m_interestLifetime(interestLifetime)
@@ -261,6 +269,11 @@ Interest::wireEncode(EncodingImpl<TAG>& encoder) const
 
   // Name
   totalLength += getName().wireEncode(encoder);
+
+  // Payload
+  if (hasPayload()) {
+    totalLength += getPayload().wireEncode(encoder);
+  }
 
   totalLength += encoder.prependVarNumber(totalLength);
   totalLength += encoder.prependVarNumber(tlv::Interest);
