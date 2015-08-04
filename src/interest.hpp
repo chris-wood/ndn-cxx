@@ -25,7 +25,7 @@
 #include "common.hpp"
 
 #include "name.hpp"
-#include "payload.hpp"
+// #include "payload.hpp"
 #include "selectors.hpp"
 #include "util/time.hpp"
 #include "management/nfd-local-control-header.hpp"
@@ -78,7 +78,7 @@ public:
    *  @warning In certain contexts that use Interest::shared_from_this(), Interest must be created
    *           using `make_shared`. Otherwise, .shared_from_this() will throw an exception.
    */
-  Interest(const Name& name, Payload payload);
+  Interest(const Name& name, const Name& payload);
 
   /** @brief Create a new Interest with the given name and interest lifetime
    *  @param name             The name for the interest.
@@ -229,7 +229,7 @@ public: // Name and guiders
     return m_name;
   }
 
-  const Payload&
+  const Name&
   getPayload() const
   {
     return m_payload;
@@ -244,10 +244,18 @@ public: // Name and guiders
   }
 
   Interest&
-  setPayload(Payload newPayload)
+  setPayload(Name newPayload)
   {
     m_payload = newPayload; // deep copy
     return *this;
+  }
+
+  /** @brief Check if Payload set
+   */
+  bool
+  hasPayload() const
+  {
+    return m_payload.hasWire();
   }
 
   const time::milliseconds&
@@ -464,7 +472,7 @@ private:
   Selectors m_selectors;
   mutable Block m_nonce;
   time::milliseconds m_interestLifetime;
-  Payload m_payload;
+  Name m_payload;
 
   mutable Block m_link;
   size_t m_selectedDelegationIndex;

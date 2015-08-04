@@ -46,7 +46,7 @@ Interest::Interest(const Name& name)
 {
 }
 
-Interest::Interest(const Name& name, std::vector<uint8_t> payload)
+Interest::Interest(const Name& name, const Name& payload)
   : m_name(name)
   , m_payload(payload)
   , m_interestLifetime(time::milliseconds::min())
