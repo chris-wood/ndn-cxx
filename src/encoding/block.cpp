@@ -279,6 +279,9 @@ void
 Block::reset()
 {
   m_buffer.reset(); // reset of the shared_ptr
+
+  for ()
+
   m_subBlocks.clear(); // remove all parsed subelements
 
   m_type = std::numeric_limits<uint32_t>::max();

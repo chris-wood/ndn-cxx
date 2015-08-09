@@ -233,10 +233,24 @@ public: // Name and guiders
     return m_interestLifetime;
   }
 
+  uint64_t
+  getIsPint() const
+  {
+    return m_isPint;
+  }
+
   Interest&
   setInterestLifetime(const time::milliseconds& interestLifetime)
   {
     m_interestLifetime = interestLifetime;
+    m_wire.reset();
+    return *this;
+  }
+
+  Interest&
+  setIsPint(uint64_t flag) 
+  {
+    m_isPint = flag;
     m_wire.reset();
     return *this;
   }
@@ -249,17 +263,11 @@ public: // Name and guiders
     return m_nonce.hasWire();
   }
 
-  bool
-  hasIsPint() const
-  {
-    return m_isPint.hasWire();
-  }
-
-  bool
-  hasPayload() const
-  {
-    return m_payload.hasWire();
-  }
+  // bool
+  // hasPayload() const
+  // {
+  //   return m_payload.hasWire();
+  // }
 
   /** @brief Get Interest's nonce
    *
@@ -268,11 +276,8 @@ public: // Name and guiders
   uint32_t
   getNonce() const;
 
-  uint8_t
-  getIsPint() const;
-
-  std::vector<uint8_t>
-  getPayload() const;
+  // uint32_t
+  // getPayload(uint8_t **data) const;
 
   /** @brief Set Interest's nonce
    *
@@ -282,11 +287,8 @@ public: // Name and guiders
   Interest&
   setNonce(uint32_t nonce);
 
-  Interest&
-  setIsPint(uint8_t isPint);
-
-  Interest&
-  setPayload(std::vector<uint8_t> payload);
+  // Interest&
+  // setPayload(uint8_t *payload, uint32_t length);
 
   /** @brief Refresh nonce
    *
@@ -465,8 +467,8 @@ private:
   Selectors m_selectors;
   mutable Block m_nonce;
   time::milliseconds m_interestLifetime;
-  mutable Block  m_payload;
-  mutable Block m_isPint;
+  // mutable Block m_payload;
+  uint64_t m_isPint;
 
   mutable Block m_link;
   size_t m_selectedDelegationIndex;

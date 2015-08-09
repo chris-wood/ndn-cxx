@@ -35,6 +35,7 @@ static_assert(std::is_base_of<tlv::Error, Interest::Error>::value,
 
 Interest::Interest()
   : m_interestLifetime(time::milliseconds::min())
+  , m_isPint(0)
   , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
 {
 }
@@ -42,6 +43,7 @@ Interest::Interest()
 Interest::Interest(const Name& name)
   : m_name(name)
   , m_interestLifetime(time::milliseconds::min())
+  , m_isPint(0)
   , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
 {
 }
@@ -49,6 +51,7 @@ Interest::Interest(const Name& name)
 Interest::Interest(const Name& name, const time::milliseconds& interestLifetime)
   : m_name(name)
   , m_interestLifetime(interestLifetime)
+  , m_isPint(0)
   , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
 {
 }
@@ -72,31 +75,18 @@ Interest::getNonce() const
   }
 }
 
-uint8_t
-Interest::getIsPint() const
-{
-  if (!m_isPint.hasWire())
-    const_cast<Interest*>(this)->setIsPint(0);
+// uint32_t
+// Interest::getPayload(uint8_t **payload) const
+// {
+//   uint32_t payloadSize = 0;
 
-  if (m_isPint.value_size() == sizeof(uint8_t))
-    return *reinterpret_cast<const uint8_t*>(m_isPint.value());
-  else {
-    // for compatibility reasons.  Should be removed eventually
-    return readNonNegativeInteger(m_isPint);
-  }
-}
+//   if (m_payload.hasWire()) {
+//     std::memcpy(*payload, m_payload.value(), m_payload.value_size());
+//     // result.assign(m_payload.value_size(), *reinterpret_cast<const uint8_t*>(m_payload.value()));
+//   }
 
-std::vector<uint8_t>
-Interest::getPayload() const
-{
-  std::vector<uint8_t> result;
-
-  if (m_payload.hasWire())
-    result.assign(m_payload.value_size(),
-                  *reinterpret_cast<const uint8_t*>(m_payload.value()));
-
-  return result;
-}
+//   return payloadSize; // size of 0 means there was no payload
+// }
 
 Interest&
 Interest::setNonce(uint32_t nonce)
@@ -113,35 +103,20 @@ Interest::setNonce(uint32_t nonce)
   return *this;
 }
 
-Interest&
-Interest::setIsPint(uint8_t isPint)
-{
-  if (m_wire.hasWire() && m_isPint.value_size() == sizeof(uint8_t)) {
-    std::memcpy(const_cast<uint8_t*>(m_isPint.value()), &isPint, sizeof(isPint));
-  }
-  else {
-    m_isPint = makeBinaryBlock(tlv::IsPint,
-                               reinterpret_cast<const uint8_t*>(&isPint),
-                               sizeof(isPint));
-    m_wire.reset();
-  }
-  return *this;
-}
-
-Interest&
-Interest::setPayload(std::vector<uint8_t> payload)
-{
-  if (m_wire.hasWire()) {
-    std::memcpy(const_cast<uint8_t*>(m_payload.value()), payload.data(), payload.size());
-  }
-  else {
-    m_payload = makeBinaryBlock(tlv::Payload,
-                                reinterpret_cast<const uint8_t*>(payload.data()),
-                                payload.size());
-    m_wire.reset();
-  }
-  return *this;
-}
+// Interest&
+// Interest::setPayload(uint8_t *payload, uint32_t length) // length == 32 for 256 bits
+// {
+//   if (m_wire.hasWire()) {
+//     std::memcpy(const_cast<uint8_t*>(m_payload.value()), payload, sizeof(uint8_t) * length);
+//   }
+//   else {
+//     m_payload = makeBinaryBlock(tlv::Payload,
+//                                 reinterpret_cast<const uint8_t*>(payload),
+//                                 sizeof(uint8_t) * length); 
+//     m_wire.reset();
+//   }
+//   return *this;
+// }
 
 void
 Interest::refreshNonce()
@@ -287,13 +262,12 @@ Interest::wireEncode(EncodingImpl<TAG>& encoder) const
   // (reverse encoding)
 
   // IsPint
-  getIsPint(); // to ensure that isPint is properly set
-  totalLength += encoder.prependBlock(m_isPint);
+  totalLength += prependNonNegativeIntegerBlock(encoder, tlv::IsPint, getIsPint());
 
-  // Payload
-  if (hasPayload()) {
-    totalLength += encoder.prependBlock(m_payload);
-  }
+  // // Payload
+  // if (hasPayload()) {
+  //   totalLength += encoder.prependBlock(m_payload);
+  // }
 
   if (hasLink()) {
     if (hasSelectedDelegation()) {
@@ -425,11 +399,19 @@ Interest::wireDecode(const Block& wire)
     }
   }
 
-  // IsPint
-  m_isPint = m_wire.get(tlv::IsPint);
+  // // Payload
+  // m_payload = m_wire.get(tlv::Payload);
 
-  // Payload
-  m_payload = m_wire.get(tlv::Payload);
+  // IsPint
+  val = m_wire.find(tlv::IsPint);
+  if (val != m_wire.elements_end())
+    {
+      m_isPint = readNonNegativeInteger(*val);
+    }
+  else
+    {
+      m_isPint = 0;
+    }
 }
 
 bool
@@ -551,10 +533,10 @@ operator<<(std::ostream& os, const Interest& interest)
     os << delim << "ndn.Nonce=" << interest.getNonce();
     delim = '&';
   }
-  if (interest.hasIsPint()) {
-    os << delim << "ndn.IsPint=" << interest.getIsPint();
-    delim = '&';
-  }
+  // if (interest.hasIsPint()) {
+  //   os << delim << "ndn.IsPint=" << interest.getIsPint();
+  //   delim = '&';
+  // }
   if (!interest.getExclude().empty()) {
     os << delim << "ndn.Exclude=" << interest.getExclude();
     delim = '&';
