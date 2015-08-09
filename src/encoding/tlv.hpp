@@ -87,6 +87,8 @@ enum {
   LinkPreference = 30,
   LinkDelegation = 31,
   SelectedDelegation = 32,
+  Payload = 33,
+  IsPint = 34,
 
   AppPrivateBlock1 = 128,
   AppPrivateBlock2 = 32767

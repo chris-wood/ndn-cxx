@@ -46,14 +46,6 @@ Interest::Interest(const Name& name)
 {
 }
 
-Interest::Interest(const Name& name, const Name& payload)
-  : m_name(name)
-  , m_payload(payload)
-  , m_interestLifetime(time::milliseconds::min())
-  , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
-{
-}
-
 Interest::Interest(const Name& name, const time::milliseconds& interestLifetime)
   : m_name(name)
   , m_interestLifetime(interestLifetime)
@@ -80,6 +72,32 @@ Interest::getNonce() const
   }
 }
 
+uint8_t
+Interest::getIsPint() const
+{
+  if (!m_isPint.hasWire())
+    const_cast<Interest*>(this)->setIsPint(0);
+
+  if (m_isPint.value_size() == sizeof(uint8_t))
+    return *reinterpret_cast<const uint8_t*>(m_isPint.value());
+  else {
+    // for compatibility reasons.  Should be removed eventually
+    return readNonNegativeInteger(m_isPint);
+  }
+}
+
+std::vector<uint8_t>
+Interest::getPayload() const
+{
+  std::vector<uint8_t> result;
+
+  if (m_payload.hasWire())
+    result.assign(m_payload.value_size(),
+                  *reinterpret_cast<const uint8_t*>(m_payload.value()));
+
+  return result;
+}
+
 Interest&
 Interest::setNonce(uint32_t nonce)
 {
@@ -90,6 +108,36 @@ Interest::setNonce(uint32_t nonce)
     m_nonce = makeBinaryBlock(tlv::Nonce,
                               reinterpret_cast<const uint8_t*>(&nonce),
                               sizeof(nonce));
+    m_wire.reset();
+  }
+  return *this;
+}
+
+Interest&
+Interest::setIsPint(uint8_t isPint)
+{
+  if (m_wire.hasWire() && m_isPint.value_size() == sizeof(uint8_t)) {
+    std::memcpy(const_cast<uint8_t*>(m_isPint.value()), &isPint, sizeof(isPint));
+  }
+  else {
+    m_isPint = makeBinaryBlock(tlv::IsPint,
+                               reinterpret_cast<const uint8_t*>(&isPint),
+                               sizeof(isPint));
+    m_wire.reset();
+  }
+  return *this;
+}
+
+Interest&
+Interest::setPayload(std::vector<uint8_t> payload)
+{
+  if (m_wire.hasWire()) {
+    std::memcpy(const_cast<uint8_t*>(m_payload.value()), payload.data(), payload.size());
+  }
+  else {
+    m_payload = makeBinaryBlock(tlv::Payload,
+                                reinterpret_cast<const uint8_t*>(payload.data()),
+                                payload.size());
     m_wire.reset();
   }
   return *this;
@@ -233,8 +281,19 @@ Interest::wireEncode(EncodingImpl<TAG>& encoder) const
   //                InterestLifetime?
   //                Link?
   //                SelectedDelegation?
+  //                Payload
+  //                IsPint
 
   // (reverse encoding)
+
+  // IsPint
+  getIsPint(); // to ensure that isPint is properly set
+  totalLength += encoder.prependBlock(m_isPint);
+
+  // Payload
+  if (hasPayload()) {
+    totalLength += encoder.prependBlock(m_payload);
+  }
 
   if (hasLink()) {
     if (hasSelectedDelegation()) {
@@ -269,11 +328,6 @@ Interest::wireEncode(EncodingImpl<TAG>& encoder) const
 
   // Name
   totalLength += getName().wireEncode(encoder);
-
-  // Payload
-  if (hasPayload()) {
-    totalLength += getPayload().wireEncode(encoder);
-  }
 
   totalLength += encoder.prependVarNumber(totalLength);
   totalLength += encoder.prependVarNumber(tlv::Interest);
@@ -317,6 +371,8 @@ Interest::wireDecode(const Block& wire)
   //                InterestLifetime?
   //                Link?
   //                SelectedDelegation?
+  //                Payload
+  //                IsPint
 
   if (m_wire.type() != tlv::Interest)
     throw Error("Unexpected TLV number when decoding Interest");
@@ -368,6 +424,12 @@ Interest::wireDecode(const Block& wire)
       throw Error("Invalid selected delegation index when decoding Interest");
     }
   }
+
+  // IsPint
+  m_isPint = m_wire.get(tlv::IsPint);
+
+  // Payload
+  m_payload = m_wire.get(tlv::Payload);
 }
 
 bool
@@ -487,6 +549,10 @@ operator<<(std::ostream& os, const Interest& interest)
 
   if (interest.hasNonce()) {
     os << delim << "ndn.Nonce=" << interest.getNonce();
+    delim = '&';
+  }
+  if (interest.hasIsPint()) {
+    os << delim << "ndn.IsPint=" << interest.getIsPint();
     delim = '&';
   }
   if (!interest.getExclude().empty()) {

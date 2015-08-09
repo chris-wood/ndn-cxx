@@ -25,7 +25,6 @@
 #include "common.hpp"
 
 #include "name.hpp"
-// #include "payload.hpp"
 #include "selectors.hpp"
 #include "util/time.hpp"
 #include "management/nfd-local-control-header.hpp"
@@ -70,15 +69,6 @@ public:
    *           using `make_shared`. Otherwise, .shared_from_this() will throw an exception.
    */
   Interest(const Name& name);
-
-  /** @brief Create a new Interest with the given name
-   *  @param name The name for the interest.
-   *  @param payload The payload for this interest.
-   *  @note This constructor allows implicit conversion from Name.
-   *  @warning In certain contexts that use Interest::shared_from_this(), Interest must be created
-   *           using `make_shared`. Otherwise, .shared_from_this() will throw an exception.
-   */
-  Interest(const Name& name, const Name& payload);
 
   /** @brief Create a new Interest with the given name and interest lifetime
    *  @param name             The name for the interest.
@@ -229,33 +219,12 @@ public: // Name and guiders
     return m_name;
   }
 
-  const Name&
-  getPayload() const
-  {
-    return m_payload;
-  }
-
   Interest&
   setName(const Name& name)
   {
     m_name = name;
     m_wire.reset();
     return *this;
-  }
-
-  Interest&
-  setPayload(Name newPayload)
-  {
-    m_payload = newPayload; // deep copy
-    return *this;
-  }
-
-  /** @brief Check if Payload set
-   */
-  bool
-  hasPayload() const
-  {
-    return m_payload.hasWire();
   }
 
   const time::milliseconds&
@@ -280,12 +249,30 @@ public: // Name and guiders
     return m_nonce.hasWire();
   }
 
+  bool
+  hasIsPint() const
+  {
+    return m_isPint.hasWire();
+  }
+
+  bool
+  hasPayload() const
+  {
+    return m_payload.hasWire();
+  }
+
   /** @brief Get Interest's nonce
    *
    *  If nonce was not set before this call, it will be automatically assigned to a random value
    */
   uint32_t
   getNonce() const;
+
+  uint8_t
+  getIsPint() const;
+
+  std::vector<uint8_t>
+  getPayload() const;
 
   /** @brief Set Interest's nonce
    *
@@ -294,6 +281,12 @@ public: // Name and guiders
    */
   Interest&
   setNonce(uint32_t nonce);
+
+  Interest&
+  setIsPint(uint8_t isPint);
+
+  Interest&
+  setPayload(std::vector<uint8_t> payload);
 
   /** @brief Refresh nonce
    *
@@ -472,7 +465,8 @@ private:
   Selectors m_selectors;
   mutable Block m_nonce;
   time::milliseconds m_interestLifetime;
-  Name m_payload;
+  mutable Block  m_payload;
+  mutable Block m_isPint;
 
   mutable Block m_link;
   size_t m_selectedDelegationIndex;
