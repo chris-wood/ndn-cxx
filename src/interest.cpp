@@ -36,6 +36,7 @@ static_assert(std::is_base_of<tlv::Error, Interest::Error>::value,
 Interest::Interest()
   : m_interestLifetime(time::milliseconds::min())
   , m_isPint(0)
+  , m_hasPayload(false)
   , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
 {
 }
@@ -44,6 +45,7 @@ Interest::Interest(const Name& name)
   : m_name(name)
   , m_interestLifetime(time::milliseconds::min())
   , m_isPint(0)
+  , m_hasPayload(false)
   , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
 {
 }
@@ -52,6 +54,7 @@ Interest::Interest(const Name& name, const time::milliseconds& interestLifetime)
   : m_name(name)
   , m_interestLifetime(interestLifetime)
   , m_isPint(0)
+  , m_hasPayload(false)
   , m_selectedDelegationIndex(INVALID_SELECTED_DELEGATION_INDEX)
 {
 }
@@ -75,18 +78,16 @@ Interest::getNonce() const
   }
 }
 
-// uint32_t
-// Interest::getPayload(uint8_t **payload) const
-// {
-//   uint32_t payloadSize = 0;
-
-//   if (m_payload.hasWire()) {
-//     std::memcpy(*payload, m_payload.value(), m_payload.value_size());
-//     // result.assign(m_payload.value_size(), *reinterpret_cast<const uint8_t*>(m_payload.value()));
-//   }
-
-//   return payloadSize; // size of 0 means there was no payload
-// }
+std::vector<uint64_t>
+Interest::getPayload() const
+{
+  std::vector<uint64_t> values;
+  values.push_back(m_payload1);
+  values.push_back(m_payload2);
+  values.push_back(m_payload3);
+  values.push_back(m_payload4);
+  return values; 
+}
 
 Interest&
 Interest::setNonce(uint32_t nonce)
@@ -103,20 +104,17 @@ Interest::setNonce(uint32_t nonce)
   return *this;
 }
 
-// Interest&
-// Interest::setPayload(uint8_t *payload, uint32_t length) // length == 32 for 256 bits
-// {
-//   if (m_wire.hasWire()) {
-//     std::memcpy(const_cast<uint8_t*>(m_payload.value()), payload, sizeof(uint8_t) * length);
-//   }
-//   else {
-//     m_payload = makeBinaryBlock(tlv::Payload,
-//                                 reinterpret_cast<const uint8_t*>(payload),
-//                                 sizeof(uint8_t) * length); 
-//     m_wire.reset();
-//   }
-//   return *this;
-// }
+Interest&
+Interest::setPayload(std::vector<uint64_t> values)
+{
+  m_payload1 = values.at(0);
+  m_payload2 = values.at(1);
+  m_payload3 = values.at(2);
+  m_payload4 = values.at(3);
+  m_hasPayload = true;
+  m_wire.reset();
+  return *this;
+}
 
 void
 Interest::refreshNonce()
@@ -260,14 +258,16 @@ Interest::wireEncode(EncodingImpl<TAG>& encoder) const
   //                IsPint
 
   // (reverse encoding)
-
   // IsPint
   totalLength += prependNonNegativeIntegerBlock(encoder, tlv::IsPint, getIsPint());
 
-  // // Payload
-  // if (hasPayload()) {
-  //   totalLength += encoder.prependBlock(m_payload);
-  // }
+  // Payload
+  if (hasPayload()) {
+    totalLength += prependNonNegativeIntegerBlock(encoder, tlv::Payload1, getPayload1());
+    totalLength += prependNonNegativeIntegerBlock(encoder, tlv::Payload2, getPayload2());
+    totalLength += prependNonNegativeIntegerBlock(encoder, tlv::Payload3, getPayload3());
+    totalLength += prependNonNegativeIntegerBlock(encoder, tlv::Payload4, getPayload4());
+  }
 
   if (hasLink()) {
     if (hasSelectedDelegation()) {
@@ -399,8 +399,17 @@ Interest::wireDecode(const Block& wire)
     }
   }
 
-  // // Payload
-  // m_payload = m_wire.get(tlv::Payload);
+  // Payload
+  val = m_wire.find(tlv::Payload1);
+  if (val != m_wire.elements_end()) {
+    m_payload1 = readNonNegativeInteger(*val);
+    val = m_wire.find(tlv::Payload2);
+    m_payload2 = readNonNegativeInteger(*val);
+    val = m_wire.find(tlv::Payload3);
+    m_payload3 = readNonNegativeInteger(*val);
+    val = m_wire.find(tlv::Payload4);
+    m_payload4 = readNonNegativeInteger(*val);
+  }
 
   // IsPint
   val = m_wire.find(tlv::IsPint);

@@ -239,6 +239,30 @@ public: // Name and guiders
     return m_isPint;
   }
 
+  uint64_t
+  getPayload1() const 
+  {
+    return m_payload1;
+  }
+
+  uint64_t
+  getPayload2() const 
+  {
+    return m_payload2;
+  }
+
+  uint64_t
+  getPayload3() const 
+  {
+    return m_payload3;
+  }
+
+  uint64_t
+  getPayload4() const 
+  {
+    return m_payload4;
+  }
+
   Interest&
   setInterestLifetime(const time::milliseconds& interestLifetime)
   {
@@ -263,11 +287,11 @@ public: // Name and guiders
     return m_nonce.hasWire();
   }
 
-  // bool
-  // hasPayload() const
-  // {
-  //   return m_payload.hasWire();
-  // }
+  bool
+  hasPayload() const
+  {
+    return m_hasPayload;
+  }
 
   /** @brief Get Interest's nonce
    *
@@ -276,8 +300,8 @@ public: // Name and guiders
   uint32_t
   getNonce() const;
 
-  // uint32_t
-  // getPayload(uint8_t **data) const;
+  std::vector<uint64_t>
+  getPayload() const;
 
   /** @brief Set Interest's nonce
    *
@@ -287,8 +311,8 @@ public: // Name and guiders
   Interest&
   setNonce(uint32_t nonce);
 
-  // Interest&
-  // setPayload(uint8_t *payload, uint32_t length);
+  Interest&
+  setPayload(std::vector<uint64_t> values);
 
   /** @brief Refresh nonce
    *
@@ -467,8 +491,15 @@ private:
   Selectors m_selectors;
   mutable Block m_nonce;
   time::milliseconds m_interestLifetime;
-  // mutable Block m_payload;
   uint64_t m_isPint;
+
+  // avoid the encoding -_-
+  uint64_t m_payload1;
+  uint64_t m_payload2;
+  uint64_t m_payload3;
+  uint64_t m_payload4;
+
+  bool m_hasPayload;
 
   mutable Block m_link;
   size_t m_selectedDelegationIndex;
